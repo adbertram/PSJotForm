@@ -92,6 +92,7 @@ function Invoke-JotFormApiCall {
 	$invRestParams = @{
 		Uri     = $uri
 		Headers = $headers
+		Method  = $HttpMethod
 	}
 	if ($PSBoundParameters.ContainsKey('Payload')) {
 		$invRestParams.Body = $Payload
