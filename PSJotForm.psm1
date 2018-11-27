@@ -1,7 +1,11 @@
-function Get-JotFormApiAuthInfo {
+function Get-JotFormApiKey {
 	[CmdletBinding()]
 	param
 	(
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[string]$ApiKey,
+
 		[Parameter()]
 		[ValidateNotNullOrEmpty()]
 		[string]$RegistryKeyPath = 'HKCU:\Software\PSJotForm'
@@ -17,15 +21,18 @@ function Get-JotFormApiAuthInfo {
 	}
 
 	try {
-		if (-not (Test-Path -Path $RegistryKeyPath)) {
-			Write-Warning 'No PSJotForm API info found in registry'
+		if ($PSBoundParameters.ContainsKey('ApiKey')) {
+			$script:JotFormAPIKey = $ApiKey
+			$script:JotFormAPIKey
+		} elseif (Get-Variable -Name JotFormAPIKey -Scope Script -ErrorAction Ignore) {
+			$script:JotFormAPIKey
+		} elseif (-not (Test-Path -Path $RegistryKeyPath)) {
+			throw "No JotForm configuration found in registry"
+		} elseif (-not ($keyValues = Get-ItemProperty -Path $RegistryKeyPath)) {
+			throw 'JotForm API not found in registry'
 		} else {
-			$keys = (Get-Item -Path $RegistryKeyPath).Property
-			$ht = @{}
-			foreach ($key in $keys) {
-				$ht[$key] = decrypt (Get-ItemProperty -Path $RegistryKeyPath).$key
-			}
-			[pscustomobject]$ht
+			$script:JotFormAPIKey = decrypt $keyValues.APIKey
+			$script:JotFormAPIKey
 		}
 	} catch {
 		Write-Error $_.Exception.Message
@@ -83,11 +90,11 @@ function Invoke-JotFormApiCall {
 
 	$ErrorActionPreference = 'Stop'
 
-	$info = Get-JotFormApiAuthInfo
+	$apiKey = Get-JotFormApiKey
 
 	$baseAuthUri = 'https://api.jotform.com'
 	$uri = '{0}/{1}' -f $baseAuthUri, $Parameters
-	$headers = @{ 'APIKEY' = $info.APIKey }
+	$headers = @{ 'APIKEY' = $apiKey }
 
 	$invRestParams = @{
 		Uri     = $uri
